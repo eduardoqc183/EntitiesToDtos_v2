@@ -1,0 +1,125 @@
+﻿DECLARE @tableName NVARCHAR(MAX), @schemaName NVARCHAR(MAX), @className NVARCHAR(MAX)
+ 
+--------------- Input arguments ---------------
+SET @tableName = '{xtablename}'
+SET @schemaName = 'dbo'
+SET @className = @tableName + 'Dto'
+--------------- Input arguments end -----------
+
+DECLARE tableColumns CURSOR LOCAL FOR
+SELECT cols.name, cols.system_type_id, cols.is_nullable, cols.max_length, cols.is_identity FROM sys.columns cols
+	JOIN sys.tables tbl ON cols.object_id = tbl.object_id
+	WHERE tbl.name = @tableName
+
+PRINT 'using System;'
+PRINT 'using Newtonsoft.Json;'
+PRINT 'using System.ComponentModel.DataAnnotations;'
+PRINT 'using System.Runtime.Serialization;'
+PRINT ''
+print 'namespace {xnsentities}'
+PRINT '{'
+PRINT '	[DataContract()]'
+PRINT '	public partial class ' + @className + ' : DirtyTrackerBase'
+PRINT '	{'
+PRINT '		#region Private_fields'
+
+DECLARE @name NVARCHAR(MAX), @typeId INT, @isNullable BIT, @typeName NVARCHAR(MAX), @maxlength INT, @isidentity INT
+
+OPEN tableColumns
+FETCH NEXT FROM tableColumns INTO @name, @typeId, @isNullable, @maxlength, @isidentity
+WHILE @@FETCH_STATUS = 0
+BEGIN
+SET @typeName =
+	CASE @typeId
+		WHEN 36 THEN 'Guid'
+		WHEN 56 THEN 'int'
+		WHEN 61 THEN 'DateTime'
+		WHEN 104 THEN 'bool'
+		WHEN 231 THEN 'string'
+		WHEN 239 THEN 'string'
+		WHEN 241 THEN 'XElement'
+		WHEN 167 THEN 'string'
+		WHEN 106 THEN 'decimal'
+		WHEN 175 THEN 'string'
+		WHEN 52 THEN 'short'
+		WHEn 165 THEN 'byte[]'
+		WHEn 40 THEN 'DateTime'
+		ELSE 'TODO(' + CAST(@typeId AS NVARCHAR) + ')'
+	END;
+	IF @isNullable = 1 AND @typeId not in (231, 239, 241, 165, 167, 175, 34)
+		SET @typeName = @typeName + '?'	
+	PRINT '		private ' + @typeName + ' _' + @name + ';'
+	FETCH NEXT FROM tableColumns INTO @name, @typeId, @isNullable, @maxlength, @isidentity
+END
+CLOSE tableColumns
+PRINT '		#endregion'
+PRINT ''
+OPEN tableColumns
+
+FETCH NEXT FROM tableColumns INTO @name, @typeId, @isNullable, @maxlength, @isidentity
+WHILE @@FETCH_STATUS = 0
+BEGIN
+	SET @typeName =
+	CASE @typeId
+		WHEN 36 THEN 'Guid'
+		WHEN 56 THEN 'int'
+		WHEN 61 THEN 'DateTime'
+		WHEN 104 THEN 'bool'
+		WHEN 231 THEN 'string'
+		WHEN 239 THEN 'string'
+		WHEN 241 THEN 'XElement'
+		WHEN 167 THEN 'string'
+		WHEN 106 THEN 'decimal'
+		WHEN 175 THEN 'string'
+		WHEN 52 THEN 'short'
+		WHEn 165 THEN 'byte[]'
+		WHEn 40 THEN 'DateTime'
+		ELSE 'TODO(' + CAST(@typeId AS NVARCHAR) + ')'
+	END;
+	IF @isNullable = 1 AND @typeId not in (231, 239, 241, 165, 167, 175, 34)
+		SET @typeName = @typeName + '?'	
+	PRINT '		[DataMember()]'
+	IF @isNullable = 0
+		PRINT '		[Required(ErrorMessage = "Campo requerido", AllowEmptyStrings = false)]'
+
+	IF @typeName = 'string'
+		PRINT '		[MaxLength('+ CAST(@maxlength AS NVARCHAR) + ', ErrorMessage = "Longitud máxima de ' + CAST(@maxlength AS NVARCHAR) + '")]'
+
+	IF @typeId in (61, 40)
+		PRINT '		[JsonConverter(typeof(ESDateTimeConverter))]'
+
+	IF @typeId in (61, 40)
+		PRINT '		[DataType(DataType.Date)]'
+
+	IF @typeId in (56)
+		PRINT '		[Range(0, int.MaxValue)]'
+
+	IF @isidentity = 1
+		PRINT '		[Key]'
+
+	PRINT '		public ' + @typeName + ' ' + @name
+	PRINT '		{'
+	PRINT '			get => ' + ' _' +  @name + ';'
+	PRINT '			set => ' + 'SetField(ref _' +  @name + ', value);'
+	PRINT '		}'
+	PRINT ''
+	FETCH NEXT FROM tableColumns INTO @name, @typeId, @isNullable, @maxlength, @isidentity
+END 
+
+CLOSE tableColumns
+PRINT '		public override void Refresh()'
+PRINT '		{'
+PRINT '			#region PropertyChangedTriggerEvent'
+OPEN tableColumns
+FETCH NEXT FROM tableColumns INTO @name, @typeId, @isNullable, @maxlength, @isidentity
+WHILE @@FETCH_STATUS = 0
+BEGIN
+	PRINT '			OnPropertyChanged(nameof(' +  @name + '));'
+	FETCH NEXT FROM tableColumns INTO @name, @typeId, @isNullable, @maxlength, @isidentity
+END
+CLOSE tableColumns
+PRINT '			#endregion'
+PRINT '		}'
+PRINT '	}'
+PRINT '}'
+ 

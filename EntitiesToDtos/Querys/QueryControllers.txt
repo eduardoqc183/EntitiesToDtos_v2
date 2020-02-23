@@ -1,0 +1,112 @@
+DECLARE @tableName NVARCHAR(MAX), @schemaName NVARCHAR(MAX), @className NVARCHAR(MAX), @nombrecapital NVARCHAR(MAX)
+ 
+--------------- Input arguments ---------------
+SET @tableName = '{xtablename}'
+SET @schemaName = 'dbo'
+SET @className = @tableName + 'Dto'
+SET @nombrecapital = UPPER(LEFT(@tableName,1))+LOWER(SUBSTRING(@tableName,2,LEN(@tableName)))
+--------------- Input arguments end -----------
+
+declare tableColumns CURSOR LOCAL FOR
+
+SELECT cols.name FROM sys.columns cols
+	JOIN sys.tables tbl ON cols.object_id = tbl.object_id
+	WHERE tbl.name = @tableName and cols.is_identity = 1
+
+
+DECLARE @tableid NVARCHAR(MAX)
+OPEN tableColumns
+FETCH NEXT FROM tableColumns INTO @tableid
+
+BEGIN
+print 'using NetInvoicePeru.BussinesLayer;'
+print 'using NetInvoicePeru.Entities;'
+print 'using NetInvoicePeru.Resources;'
+print 'using System;'
+print 'using System.Threading.Tasks;'
+print 'using System.Web.Http;'
+PRINT ''
+PRINT 'namespace NetInvoicePeru.WebApi.Controllers'
+PRINT '{ ' 
+PRINT '	[RoutePrefix("api/'+@tableName+'")]'
+print '	public class ' + @nombrecapital +'Controller : ApiController'
+PRINT '	{ ' 
+print '        private readonly ' + @nombrecapital +'Bl ' + @tableName + 'Bl = new ' + @nombrecapital +'Bl();'
+print '        [HttpGet]'
+print '        [Route("Obtener' + @nombrecapital +'PorId/{id}")]'
+print '        public async Task<IHttpActionResult> Obtener' + @nombrecapital +'PorId(int id)'
+print '        {'
+print '            try'
+print '            {'
+print '                if (id == 0) return BadRequest("El Id popoprcionado no es válido");'
+print ''
+print '                var r = await ' + @tableName + 'Bl.Obtener' + @nombrecapital +'PorId(id);'
+print ''
+print '                if (r == null) return NotFound();'
+print ''
+print '                return Ok(r);'
+print '            }'
+print '            catch (Exception ex)'
+print '            {'
+print '                return Ok(new RequestResult { Success = false, Error = Utils.ObtenerExcepcionFormateada(ex) });'
+print '            }'
+print '        }'
+print ''
+print '        [HttpPost]'
+print '        [Route("Insertar' + @nombrecapital +'")]'
+print '        public async Task<IHttpActionResult> Insertar' + @nombrecapital +'(' + @className + ' dto)'
+print '        {'
+print '            try'
+print '            {'
+print '                if (dto == null) return BadRequest("Los parámetros no pueden estar nulos");'
+print ''
+print '                var r = await ' + @tableName + 'Bl.Insertar' + @nombrecapital +'(dto);'
+print ''
+print '                return Ok(r);'
+print '            }'
+print '            catch (Exception ex)'
+print '            {'
+print '                return Ok(new RequestResult { Success = false, Error = Utils.ObtenerExcepcionFormateada(ex) });'
+print '            }'
+print '        }'
+print ''
+print '        [HttpPost]'
+print '        [Route("Actualizar' + @nombrecapital +'")]'
+print '        public async Task<IHttpActionResult> Actualizar' + @nombrecapital +'(' + @className + ' dto)'
+print '        {'
+print '            try'
+print '            {'
+print '                if (dto == null) return BadRequest("Los parámetros no pueden estar nulos");'
+print '                if (dto.' + @tableid + ' == 0) return BadRequest("Id no puede ser 0");'
+print ''
+print '                var r = await ' + @tableName + 'Bl.Actualizar' + @nombrecapital +'(dto);'
+print ''
+print '                return Ok(r);'
+print '            }'
+print '            catch (Exception ex)'
+print '            {'
+print '                return Ok(new RequestResult { Success = false, Error = Utils.ObtenerExcepcionFormateada(ex) });'
+print '            }'
+print '        }'
+print ''
+print ''
+print '        [HttpGet]'
+print '        [Route("ObtenerListado' + @nombrecapital +'s")]'
+print '        public async Task<IHttpActionResult> ObtenerListado' + @nombrecapital +'s()'
+print '        {'
+print '            try'
+print '            {'
+print '                var r = await ' + @tableName + 'Bl.ObtenerListado' + @nombrecapital +'s();'
+print ''
+print '                return Ok(r);'
+print '            }'
+print '            catch (Exception ex)'
+print '            {'
+print '                return Ok(new RequestResult { Success = false, Error = Utils.ObtenerExcepcionFormateada(ex) });'
+print '            }'
+print '        }'
+print '    }'
+print '}'
+
+end
+CLOSE tableColumns

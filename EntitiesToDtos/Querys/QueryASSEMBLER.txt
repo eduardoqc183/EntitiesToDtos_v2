@@ -1,0 +1,76 @@
+﻿DECLARE @tableName NVARCHAR(MAX), @schemaName NVARCHAR(MAX), @className NVARCHAR(MAX)
+ 
+--------------- Input arguments ---------------
+SET @tableName = '{xtablename}'
+SET @schemaName = 'dbo'
+SET @className = @tableName + 'Dto'
+--------------- Input arguments end -----------
+
+DECLARE tableColumns CURSOR LOCAL FOR
+SELECT cols.name FROM sys.columns cols
+	JOIN sys.tables tbl ON cols.object_id = tbl.object_id
+	WHERE tbl.name = @tableName
+PRINT 'using {xnsdatamodel};'
+PRINT 'using System.Collections.Generic;'
+PRINT 'using System.Linq;'
+PRINT ''
+print 'namespace {xnsentities}'
+print '{'
+PRINT 'public static partial class ' + @tableName + 'Assembler'
+PRINT '{'
+ 
+OPEN tableColumns
+DECLARE @name NVARCHAR(MAX)
+FETCH NEXT FROM tableColumns INTO @name
+print '	static partial void OnDTO(this ' + @tableName + ' entity, '+ @className + ' dto);'
+print '	static partial void OnEntity(this ' + @className + ' dto, '+ @tableName + ' entity);'
+PRINT '	public static ' + @tableName + ' ToEntity(this ' + @className + ' dto)'
+PRINT '	{'
+PRINT '		if (dto == null) return null;'
+PRINT '		var entity = new ' + @tableName 
+PRINT '		{'
+WHILE @@FETCH_STATUS = 0
+BEGIN
+	
+	PRINT '			'+ @name + ' = dto.'+ @name + ','
+	FETCH NEXT FROM tableColumns INTO @name
+END
+PRINT '		};'
+PRINT '		dto.OnEntity(entity);'
+PRINT '		return entity;'
+PRINT '	}'
+
+CLOSE tableColumns
+
+PRINT '	public static ' + @className + ' ToDTO(this ' + @tableName  + ' entity)'
+PRINT '	{'
+PRINT '		if (entity == null) return null;'
+PRINT '		var dto = new ' + @className 
+PRINT '		{'
+OPEN tableColumns
+FETCH NEXT FROM tableColumns INTO @name
+WHILE @@FETCH_STATUS = 0
+BEGIN
+	
+	PRINT '			'+ @name + ' = entity.'+ @name + ','
+	FETCH NEXT FROM tableColumns INTO @name
+END
+PRINT '		};'
+PRINT '		entity.OnDTO(dto);'
+PRINT '		return dto;'
+PRINT '	}'
+CLOSE tableColumns
+
+PRINT '	public static List<'+@tableName+'> ToEntities(this IEnumerable<'+@className+'> dtos)'
+PRINT '	{'
+PRINT '		if (dtos == null) return null;'
+PRINT '		return dtos.Select(e => e.ToEntity()).ToList();'
+PRINT '	}'
+
+PRINT '	public static List<'+@className+'> ToDTOs(this IEnumerable<'+@tableName+'> entities)'
+PRINT '	{'
+PRINT '		if (entities == null) return null;'
+PRINT '		return entities.Select(e => e.ToDTO()).ToList();'
+PRINT '	}'
+PRINT '}'
+PRINT '}'
